@@ -1,9 +1,27 @@
 import numpy as np
-import KB_python.coordinate_manipulation.angles as angles
 '''
     Functions to manipulate coordinate data with translational and rotational transformations, and cart/pol conversions
 
 '''
+
+
+def vectorNorm(vec, axis=None):
+    ''' Returns vector norm. Singleton in dimension along which the norm was made, so that numpy math can proceed'''
+    vecShape = len(vec.shape)
+    # do along last axis if none is given
+    if not axis:
+        axis = vecShape - 1
+
+    if axis >= vecShape:
+        raise IndexError("Attempted to sum along axis {}, but the vector has shape {}".format(axis, vecShape))
+    return np.expand_dims(np.sqrt((vec ** 2).sum(axis=axis)), axis)
+
+
+def angleFromVectors(v1, v2):
+    axis = len(v1.shape) - 1
+    nv1 = v1 / vectorNorm(v1)
+    nv2 = v2 / vectorNorm(v2)
+    return np.arccos(np.clip((nv1 * nv2).sum(axis=axis), -1.0, 1.0))
 
 
 def rotate(xyz, rotation_angles):
@@ -41,7 +59,7 @@ def center_on_rings(traj, index_dict):
 
     ring_vec = traj.xyz[:, index_dict['ring2'], :2].mean(axis=1) - traj.xyz[:, index_dict['ring1'], :2].mean(axis=1)
     ring_vec /= np.sqrt((ring_vec ** 2).sum(axis=1))[:, np.newaxis]
-    rot_angles = angles.angleFromVectors(ring_vec, np.array((1, 0)))
+    rot_angles = angleFromVectors(ring_vec, np.array((1, 0)))
 
     for i in range(traj.xyz.shape[0]):
         traj.xyz[i, :, :] = rotate(traj.xyz[i, :, :], [0, 0, rot_angles[i]])
